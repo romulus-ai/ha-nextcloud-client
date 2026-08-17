@@ -1,0 +1,45 @@
+name: Build
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - nextcloud_sync/config.yaml
+      - nextcloud_sync/Dockerfile
+      - nextcloud_sync/rootfs/**
+      - nextcloud_sync/run.sh
+      - .github/workflows/builder.yaml
+      - .github/workflows/build-app.yaml
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: nextcloud-sync-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test release
+    uses: ./.github/workflows/ci.yaml
+
+  lint:
+    name: Lint release
+    uses: ./.github/workflows/lint.yaml
+
+  build:
+    name: Build Nextcloud Sync
+    needs:
+      - test
+      - lint
+    permissions:
+      contents: write
+      id-token: write
+      packages: write
+    uses: ./.github/workflows/build-app.yaml
+    with:
+      publish: ${{ startsWith(github.ref, 'refs/tags/v') }}

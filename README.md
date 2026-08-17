@@ -1,56 +1,51 @@
-# ha-nextcloud-client
+# Home Assistant Nextcloud Sync
 
-Home Assistant Add-on als Daemon-Wrapper um `nextcloudcmd`.
+Home-Assistant-App (Add-on), die Ordner mit `nextcloudcmd` bidirektional mit
+Nextcloud synchronisiert. Mehrere Jobs, Intervalle, Ausschlussmuster und
+Bandbreitenlimits werden in der Home-Assistant-Oberflaeche konfiguriert.
 
-`nextcloudcmd` selbst ist kein dauerhaft laufender Daemon. Dieses Add-on startet daher einen Python-Dienst, der:
+[![Open your Home Assistant instance and show the add app repository dialog with this repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fromulus-ai%2Fha-nextcloud-client)
 
-- dauerhaft läuft,
-- mehrere Sync-Jobs verwaltet,
-- lokale Änderungen erkennt,
-- und `nextcloudcmd` kontrolliert für jeden Job ausführt.
+## Installation
 
-## Unterstützte Sync-Modi
+1. Den Button oben verwenden oder in Home Assistant unter **Einstellungen > Apps > App installieren > Repositories** diese URL hinzufuegen:
 
-- `upload`: lokal → Nextcloud (über Staging, damit Remote-Änderungen nicht direkt lokal angewendet werden)
-- `download`: Nextcloud → lokal
-- `bidirectional`: direkter Nextcloud-Client-Sync
+   ```text
+   https://github.com/romulus-ai/ha-nextcloud-client
+   ```
 
-## Beispielkonfiguration (Add-on Optionen)
+2. **Nextcloud Sync** installieren.
+3. Zugangsdaten und mindestens einen Sync-Job auf der Konfigurationsseite eintragen.
+4. Optional den Mosquitto Broker und die MQTT-Integration installieren, damit Statussensoren automatisch angelegt werden.
+5. Die App starten und das Protokoll des ersten Abgleichs kontrollieren.
 
-```yaml
-nextcloud:
-  url: "https://cloud.example.com"
-  username: "thomas"
-  password: "APP_PASSWORT"
+## Eigenschaften
 
-sync_interval: 300
+- Native bidirektionale Synchronisation ueber `nextcloudcmd`
+- Beliebig viele Jobs unter `/backup`, `/share` und `/media`
+- Persistenter Status und begrenzte Wiederholungsversuche
+- Timeout und kontrollierter Abbruch beim Stoppen der App
+- MQTT-Discovery fuer Status, Fehler, letzten Erfolg und Fehleranzahl
+- Vorgebaute Images fuer `amd64` und `aarch64`
 
-syncs:
-  - name: "Home Assistant Backups"
-    local: "/backup"
-    remote: "/HomeAssistantBackups"
-    direction: "upload"
-    interval: 300
-    delete_remote: false
-    exclude:
-      - "*.tmp"
+## Wichtiger Hinweis
 
-  - name: "Media"
-    local: "/media"
-    remote: "/HomeAssistant/Media"
-    direction: "bidirectional"
+Die Synchronisation ist bidirektional. Aenderungen und Loeschungen koennen in
+beide Richtungen uebertragen werden. Vor der ersten Verwendung sollte ein
+separates Backup vorhanden sein. Fuer Nextcloud sollte ein eigenes
+App-Passwort verwendet werden.
 
-  - name: "Share"
-    local: "/share"
-    remote: "/HomeAssistant/Share"
-    direction: "upload"
-```
+Die vollstaendige Konfiguration ist in
+[`nextcloud_sync/DOCS.md`](nextcloud_sync/DOCS.md) dokumentiert.
 
-## Gemappte Home-Assistant-Verzeichnisse
+HACS installiert keine Home-Assistant-Apps/Add-ons. Dieses Repository wird
+direkt ueber den Home-Assistant-App-Store eingebunden.
 
-Das Add-on nutzt nur diese offiziellen Mounts:
+## Releases
 
-- `backup:rw`
-- `share:rw`
-- `media:rw`
-- `addon_config:rw`
+Eine Veroeffentlichung wird durch einen Git-Tag angestossen, der exakt zur
+Version in `nextcloud_sync/config.yaml` passt, beispielsweise `v0.1.0`. Der
+Workflow baut beide Architekturen, veroeffentlicht das Multi-Arch-Image und
+erstellt das GitHub Release. Das GHCR-Paket muss in GitHub einmalig auf
+**Public** gestellt werden; der Workflow prueft vor dem Release einen anonymen
+Image-Pull und bricht andernfalls ab.

@@ -1,0 +1,25 @@
+configuration:
+  nextcloud:
+    name: Nextcloud connection
+    description: Server URL, user name, and a dedicated Nextcloud app password.
+  sync_interval:
+    name: Default sync interval
+    description: Default interval in seconds. The minimum is 60 seconds.
+  timeout:
+    name: Sync timeout
+    description: Maximum runtime of one nextcloudcmd process in seconds.
+  max_retries:
+    name: Retry count
+    description: Number of additional attempts after a failed sync.
+  max_parallel_jobs:
+    name: Parallel sync jobs
+    description: Maximum number of nextcloudcmd processes running at the same time.
+  mqtt_enabled:
+    name: Publish MQTT sensors
+    description: Automatically create Home Assistant status sensors using MQTT Discovery.
+  mqtt_discovery_prefix:
+    name: MQTT Discovery prefix
+    description: Discovery prefix configured in the Home Assistant MQTT integration.
+  syncs:
+    name: Sync jobs
+    description: Bidirectional folder synchronization jobs. See the documentation for all fields.

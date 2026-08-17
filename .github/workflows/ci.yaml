@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  workflow_call:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install test tools
+        run: python -m pip install ruff
+
+      - name: Lint Python
+        run: ruff check nextcloud_sync/rootfs/app tests
+
+      - name: Compile Python
+        run: python -m compileall -q nextcloud_sync/rootfs/app
+
+      - name: Run unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: Check shell scripts
+        run: shellcheck nextcloud_sync/run.sh
+
+      - name: Build app image
+        run: |
+          docker build \
+            --build-arg BUILD_ARCH=amd64 \
+            --build-arg BUILD_VERSION=dev \
+            --tag nextcloud-sync:test \
+            nextcloud_sync
+
+      - name: Smoke-test nextcloudcmd interface
+        run: |
+          help="$(docker run --rm --entrypoint nextcloudcmd nextcloud-sync:test --help)"
+          [[ "${help}" == *"--max-sync-retries"* ]]
+          [[ "${help}" == *"--user"* ]]
+          [[ "${help}" == *"--path"* ]]

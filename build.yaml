@@ -1,8 +1,0 @@
-build_from:
-  amd64: ghcr.io/home-assistant/amd64-base:3.21
-  aarch64: ghcr.io/home-assistant/aarch64-base:3.21
-  armv7: ghcr.io/home-assistant/armv7-base:3.21
-labels:
-  org.opencontainers.image.title: "Home Assistant Nextcloud Sync Daemon"
-  org.opencontainers.image.description: "Daemon wrapper around nextcloudcmd"
-  org.opencontainers.image.source: "https://github.com/romulus-ai/ha-nextcloud-client"

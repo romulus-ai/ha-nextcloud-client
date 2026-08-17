@@ -1,0 +1,55 @@
+name: Nextcloud Sync
+version: "0.1.0"
+slug: nextcloud_sync
+description: Synchronize Home Assistant folders with Nextcloud using nextcloudcmd
+url: https://github.com/romulus-ai/ha-nextcloud-client/tree/main/nextcloud_sync
+arch:
+  - aarch64
+  - amd64
+init: false
+timeout: 30
+stage: experimental
+image: ghcr.io/romulus-ai/ha-nextcloud-client
+map:
+  - type: backup
+    read_only: false
+  - type: share
+    read_only: false
+  - type: media
+    read_only: false
+services:
+  - mqtt:want
+options:
+  nextcloud:
+    url: ""
+    username: ""
+    password: ""
+  sync_interval: 300
+  timeout: 3600
+  max_retries: 2
+  max_parallel_jobs: 2
+  mqtt_enabled: true
+  mqtt_discovery_prefix: homeassistant
+  syncs: []
+schema:
+  nextcloud:
+    url: str
+    username: str
+    password: password
+  sync_interval: int(60,)
+  timeout: int(60,86400)
+  max_retries: int(0,10)
+  max_parallel_jobs: int(1,4)
+  mqtt_enabled: bool
+  mqtt_discovery_prefix: str
+  syncs:
+    - id: str
+      name: str
+      enabled: bool
+      local: str
+      remote: str
+      interval: int(60,)?
+      upload_limit: int(0,)
+      download_limit: int(0,)
+      exclude:
+        - str
