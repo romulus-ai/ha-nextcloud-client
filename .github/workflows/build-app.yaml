@@ -14,12 +14,12 @@ jobs:
     outputs:
       architectures: ${{ steps.info.outputs.architectures }}
       build_matrix: ${{ steps.matrix.outputs.matrix }}
-      description: ${{ steps.info.outputs.description }}
+      description: ${{ fromJSON(steps.info.outputs.description) }}
       image_name: ${{ steps.normalize.outputs.image_name }}
-      name: ${{ steps.info.outputs.name }}
+      name: ${{ fromJSON(steps.info.outputs.name) }}
       registry_prefix: ${{ steps.normalize.outputs.registry_prefix }}
-      url: ${{ steps.info.outputs.url }}
-      version: ${{ steps.info.outputs.version }}
+      url: ${{ fromJSON(steps.info.outputs.url) }}
+      version: ${{ fromJSON(steps.info.outputs.version) }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v7.0.1
@@ -35,7 +35,7 @@ jobs:
       - name: Normalize image information
         id: normalize
         env:
-          IMAGE: ${{ steps.info.outputs.image }}
+          IMAGE: ${{ fromJSON(steps.info.outputs.image) }}
         run: |
           echo "image_name=${IMAGE##*/}" >> "$GITHUB_OUTPUT"
           echo "registry_prefix=${IMAGE%/*}" >> "$GITHUB_OUTPUT"
@@ -43,7 +43,7 @@ jobs:
       - name: Validate release tag
         if: inputs.publish
         env:
-          EXPECTED_TAG: v${{ steps.info.outputs.version }}
+          EXPECTED_TAG: v${{ fromJSON(steps.info.outputs.version) }}
         run: |
           if [[ "${GITHUB_REF_NAME}" != "${EXPECTED_TAG}" ]]; then
             echo "Release tag ${GITHUB_REF_NAME} does not match ${EXPECTED_TAG}" >&2
@@ -60,7 +60,7 @@ jobs:
         if: inputs.publish
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ steps.info.outputs.version }}
+          VERSION: ${{ fromJSON(steps.info.outputs.version) }}
         run: |
           if gh release view "v${VERSION}" >/dev/null 2>&1; then
             echo "Release v${VERSION} already exists and will not be overwritten" >&2
