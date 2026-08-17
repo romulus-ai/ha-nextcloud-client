@@ -1,0 +1,47 @@
+name: "Nextcloud Sync Daemon"
+version: "0.1.0"
+slug: "nextcloud_sync_daemon"
+description: "Daemon wrapper around nextcloudcmd for configurable folder sync jobs"
+url: "https://github.com/romulus-ai/ha-nextcloud-client"
+arch:
+  - amd64
+  - aarch64
+  - armv7
+startup: services
+boot: autoinit
+init: false
+map:
+  - backup:rw
+  - share:rw
+  - media:rw
+  - addon_config:rw
+options:
+  nextcloud:
+    url: "https://cloud.example.com"
+    username: "user"
+    password: "app_password"
+  sync_interval: 300
+  syncs:
+    - name: "Home Assistant Backups"
+      local: "/backup"
+      remote: "/HomeAssistantBackups"
+      direction: "upload"
+      interval: 300
+      delete_remote: false
+      exclude:
+        - "*.tmp"
+schema:
+  nextcloud:
+    url: url
+    username: str
+    password: password
+  sync_interval: int(10,)
+  syncs:
+    - name: str
+      local: str
+      remote: str
+      direction: str
+      interval: int(10,)?
+      delete_remote: bool?
+      exclude?:
+        - str
