@@ -10,12 +10,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-
 APP_PATH = Path(__file__).parents[1] / "nextcloud_sync" / "rootfs" / "app"
 sys.path.insert(0, str(APP_PATH))
 
-from config import DaemonConfig, NextcloudConfig, SyncJob  # noqa: E402
-from sync import SyncError, SyncRunner  # noqa: E402
+from config import DaemonConfig, NextcloudConfig, SyncJob
+from sync import SyncError, SyncRunner
 
 
 class SyncRunnerTest(unittest.TestCase):

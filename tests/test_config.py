@@ -4,11 +4,10 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 APP_PATH = Path(__file__).parents[1] / "nextcloud_sync" / "rootfs" / "app"
 sys.path.insert(0, str(APP_PATH))
 
-from config import load_config  # noqa: E402
+from config import load_config
 
 
 class ConfigTest(unittest.TestCase):

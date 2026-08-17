@@ -11,7 +11,6 @@ from urllib.request import Request, urlopen
 
 from config import SyncJob
 
-
 LOGGER = logging.getLogger("nextcloud-mqtt")
 BASE_TOPIC = "nextcloud_sync"
 COMPONENTS = ("status", "problem", "last_success", "consecutive_failures")
@@ -64,7 +63,7 @@ class MqttStatusPublisher:
             client.loop_start()
             if not self._connected.wait(timeout=10):
                 LOGGER.warning("MQTT connection timed out; sensors will be unavailable")
-        except Exception as err:  # MQTT must never prevent synchronization.
+        except Exception as err:  # noqa: BLE001 - MQTT is optional.
             LOGGER.warning("MQTT is unavailable: %s", err)
             self._client = None
 

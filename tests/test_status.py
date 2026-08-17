@@ -4,12 +4,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 APP_PATH = Path(__file__).parents[1] / "nextcloud_sync" / "rootfs" / "app"
 sys.path.insert(0, str(APP_PATH))
 
-from config import SyncJob  # noqa: E402
-from status import StatusStore  # noqa: E402
+from config import SyncJob
+from status import StatusStore
 
 
 class StatusStoreTest(unittest.TestCase):

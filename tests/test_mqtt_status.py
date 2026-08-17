@@ -4,12 +4,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 APP_PATH = Path(__file__).parents[1] / "nextcloud_sync" / "rootfs" / "app"
 sys.path.insert(0, str(APP_PATH))
 
-from config import SyncJob  # noqa: E402
-from mqtt_status import MqttStatusPublisher  # noqa: E402
+from config import SyncJob
+from mqtt_status import MqttStatusPublisher
 
 
 class FakeMqttClient:

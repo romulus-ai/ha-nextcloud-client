@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
 from urllib.parse import urlsplit
 
-
 DEFAULT_ALLOWED_ROOTS = (Path("/backup"), Path("/share"), Path("/media"))
 JOB_ID_PATTERN = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 MQTT_PREFIX_PATTERN = re.compile(r"^[A-Za-z0-9_-]+$")

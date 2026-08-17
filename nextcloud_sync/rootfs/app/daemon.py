@@ -12,7 +12,6 @@ from mqtt_status import MqttStatusPublisher
 from status import StatusStore
 from sync import SyncCancelled, SyncError, SyncRunner
 
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",

@@ -11,7 +11,6 @@ from pathlib import Path
 
 from config import DaemonConfig, SyncJob
 
-
 LOGGER = logging.getLogger("nextcloud-sync")
 
 
@@ -58,9 +57,10 @@ class SyncRunner:
             except SyncError as err:
                 last_error = err
                 LOGGER.warning("[%s] attempt %s/%s failed: %s", job.name, attempt, attempts, err)
-                if attempt < attempts:
-                    if self._stop_event.wait(min(60, 5 * (2 ** (attempt - 1)))):
-                        raise SyncCancelled("sync cancelled during shutdown") from err
+                if attempt < attempts and self._stop_event.wait(
+                    min(60, 5 * (2 ** (attempt - 1)))
+                ):
+                    raise SyncCancelled("sync cancelled during shutdown") from err
 
         assert last_error is not None
         raise last_error
