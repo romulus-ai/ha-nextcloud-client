@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import signal
 import subprocess
 import threading
@@ -15,12 +16,36 @@ LOGGER = logging.getLogger("nextcloud-sync")
 
 
 MAX_ERROR_LENGTH = 4000
+BLACKLISTED_ERROR_PATTERN = re.compile(
+    r'Could not complete propagation of "(?P<path>.+?)".*'
+    r"with status OCC::SyncFileItem::BlacklistedError.*"
+    r'error: "(?P<reason>.+?)"'
+)
+RETRY_AFTER_PATTERN = re.compile(
+    r"trying again in (?P<amount>\d+) "
+    r"(?P<unit>second|minute|hour|day)(?:\(s\)|s)?",
+    re.IGNORECASE,
+)
+RETRY_AFTER_MULTIPLIERS = {
+    "second": 1,
+    "minute": 60,
+    "hour": 60 * 60,
+    "day": 24 * 60 * 60,
+}
 
 
 class SyncError(RuntimeError):
-    def __init__(self, message: str, exit_code: int | None = None) -> None:
+    def __init__(
+        self,
+        message: str,
+        exit_code: int | None = None,
+        retryable: bool = True,
+        retry_after_seconds: int | None = None,
+    ) -> None:
         super().__init__(message)
         self.exit_code = exit_code
+        self.retryable = retryable
+        self.retry_after_seconds = retry_after_seconds
 
 
 class SyncCancelled(SyncError):
@@ -56,6 +81,9 @@ class SyncRunner:
                 raise
             except SyncError as err:
                 last_error = err
+                if not err.retryable:
+                    LOGGER.warning("[%s] sync will not be retried immediately: %s", job.name, err)
+                    break
                 LOGGER.warning("[%s] attempt %s/%s failed: %s", job.name, attempt, attempts, err)
                 if attempt < attempts and self._stop_event.wait(
                     min(60, 5 * (2 ** (attempt - 1)))
@@ -135,17 +163,20 @@ class SyncRunner:
                 )
 
         output_reader.join(timeout=2)
-        details = _sanitize_output("".join(output_lines), self._config.nextcloud.password)
+        output = _sanitize_output("".join(output_lines), self._config.nextcloud.password)
         _close_process_streams(process)
 
-        if "Usage: nextcloudcmd" in details:
+        if "Usage: nextcloudcmd" in output:
             raise SyncError("nextcloudcmd rejected its command-line options")
         if process.returncode != 0:
-            message = details or "nextcloudcmd returned no error details"
+            blacklisted_error = _extract_blacklisted_error(output, process.returncode)
+            if blacklisted_error is not None:
+                raise blacklisted_error
+            message = _failure_details(output) or "nextcloudcmd returned no error details"
             raise SyncError(message, exit_code=process.returncode)
 
-        if details:
-            LOGGER.debug("[%s] nextcloudcmd output: %s", job.name, details)
+        if output:
+            LOGGER.debug("[%s] nextcloudcmd output: %s", job.name, _truncate_output(output))
         LOGGER.info("[%s] sync finished", job.name)
 
 
@@ -173,7 +204,59 @@ def _close_process_streams(process: subprocess.Popen[str]) -> None:
 def _sanitize_output(value: str, password: str) -> str:
     cleaned = value.replace(password, "***") if password else value
     lines = [line.strip() for line in cleaned.splitlines() if line.strip()]
-    return "\n".join(lines)[-MAX_ERROR_LENGTH:]
+    return "\n".join(lines)
+
+
+def _extract_blacklisted_error(output: str, exit_code: int | None) -> SyncError | None:
+    for line in reversed(output.splitlines()):
+        match = BLACKLISTED_ERROR_PATTERN.search(line)
+        if match is None:
+            continue
+
+        reason = match.group("reason")
+        retry_after_seconds = None
+        retry_match = RETRY_AFTER_PATTERN.search(reason)
+        if retry_match is not None:
+            amount = int(retry_match.group("amount"))
+            unit = retry_match.group("unit").lower()
+            retry_after_seconds = amount * RETRY_AFTER_MULTIPLIERS[unit]
+
+        path = match.group("path")
+        return SyncError(
+            f'nextcloudcmd temporarily blocked "{path}" after an earlier error: {reason}',
+            exit_code=exit_code,
+            retryable=False,
+            retry_after_seconds=retry_after_seconds,
+        )
+    return None
+
+
+def _failure_details(output: str) -> str:
+    lines = output.splitlines()
+    diagnostics = [
+        line
+        for line in lines
+        if any(marker in line.lower() for marker in ("[ warning ", "[ critical ", "[ fatal "))
+    ]
+    return _truncate_output("\n".join(diagnostics or lines))
+
+
+def _truncate_output(value: str) -> str:
+    lines = value.splitlines()
+    selected: list[str] = []
+    length = 0
+    for line in reversed(lines):
+        added_length = len(line) + (1 if selected else 0)
+        if length + added_length > MAX_ERROR_LENGTH:
+            break
+        selected.append(line)
+        length += added_length
+
+    if selected:
+        return "\n".join(reversed(selected))
+    if not lines:
+        return ""
+    return lines[-1][: MAX_ERROR_LENGTH - 3] + "..."
 
 
 def _validate_job_path(job: SyncJob) -> None:

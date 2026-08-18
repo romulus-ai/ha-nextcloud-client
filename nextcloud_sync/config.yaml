@@ -1,5 +1,5 @@
 name: Nextcloud Sync
-version: "0.1.0"
+version: "0.1.1"
 slug: nextcloud_sync
 description: Synchronize Home Assistant folders with Nextcloud using nextcloudcmd
 url: https://github.com/romulus-ai/ha-nextcloud-client/tree/main/nextcloud_sync

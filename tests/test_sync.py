@@ -107,6 +107,52 @@ class SyncRunnerTest(unittest.TestCase):
         self.assertNotIn("top-secret", str(raised.exception))
         self.assertIn("***", str(raised.exception))
 
+    def test_extracts_blacklisted_file_and_retry_delay(self) -> None:
+        warning = (
+            '08-18 09:57:03:014 [ warning nextcloud.sync.propagator ]: '
+            'Could not complete propagation of "Automatic_backup.tar" by '
+            "OCC::PropagateIgnoreJob(0x1234) with status "
+            "OCC::SyncFileItem::BlacklistedError and error: "
+            '"Connection closed (skipped due to earlier error, trying again in '
+            '20 hour(s))"'
+        )
+        executable = self._script(
+            "printf '%05000d\\n' 0\n"
+            f"printf '%s\\n' '{warning}'\n"
+            "exit 4\n"
+        )
+        runner = SyncRunner(
+            self._config(),
+            threading.Event(),
+            state_dir=self.root / "state",
+            executable=str(executable),
+        )
+
+        with self.assertRaises(SyncError) as raised:
+            runner.run_job(self._job())
+
+        self.assertEqual(raised.exception.exit_code, 4)
+        self.assertFalse(raised.exception.retryable)
+        self.assertEqual(raised.exception.retry_after_seconds, 20 * 60 * 60)
+        self.assertIn("Automatic_backup.tar", str(raised.exception))
+        self.assertNotIn("0000000000", str(raised.exception))
+
+    def test_does_not_retry_non_retryable_error(self) -> None:
+        runner = SyncRunner(
+            self._config(max_retries=2),
+            threading.Event(),
+            state_dir=self.root / "state",
+        )
+        error = SyncError("temporarily blocked", retryable=False)
+
+        with (
+            patch.object(runner, "_run_once", side_effect=error) as run_once,
+            self.assertRaisesRegex(SyncError, "temporarily blocked"),
+        ):
+            runner.run_job(self._job())
+
+        run_once.assert_called_once()
+
     def test_treats_help_output_as_failure_even_with_zero_exit_code(self) -> None:
         executable = self._script('printf "Usage: nextcloudcmd [OPTION] source server\\n"\n')
         runner = SyncRunner(

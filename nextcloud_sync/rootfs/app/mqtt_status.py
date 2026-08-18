@@ -115,7 +115,7 @@ class MqttStatusPublisher:
             "name": f"Nextcloud Sync {job.name}",
             "manufacturer": "romulus-ai",
             "model": "Nextcloud Sync Job",
-            "sw_version": os.environ.get("BUILD_VERSION", "0.1.0"),
+            "sw_version": os.environ.get("BUILD_VERSION", "0.1.1"),
         }
         origin = {
             "name": "Nextcloud Sync add-on",

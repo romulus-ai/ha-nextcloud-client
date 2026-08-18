@@ -124,6 +124,12 @@ im Protokoll. Bei Syncfehlern bleiben der letzte Status und die Fehlermeldung
 unter `/data/status` erhalten und werden, sofern verfuegbar, per MQTT
 veroeffentlicht.
 
+Hat `nextcloudcmd` eine Datei nach einem frueheren Fehler voruebergehend
+blockiert, nennt die App die betroffene Datei und die Ursache. Solche Fehler
+werden nicht durch die kurzen App-Wiederholungen erneut versucht. Wenn
+`nextcloudcmd` eine Wartezeit meldet, wird der naechste Joblauf entsprechend
+verschoben. Der lokale Sync-Journal wird dabei nicht veraendert oder geloescht.
+
 Fehlende Sensoren deuten meist darauf hin, dass kein MQTT-Dienst eingerichtet
 ist, MQTT Discovery deaktiviert ist oder ein abweichender Discovery-Praefix
 verwendet wird.
