@@ -95,8 +95,8 @@ Clients. Eine leere Liste `[]` deaktiviert benutzerdefinierte Ausschluesse.
 
 Wenn MQTT verfuegbar ist, wird jeder Job als eigenes Geraet angelegt:
 
-- **Status**: `idle`, `running`, `success`, `error` oder `disabled`
-- **Problem**: aktiv, wenn der letzte Lauf fehlgeschlagen ist
+- **Status**: `OK`, `warning` oder `Problem`
+- **Problem**: aktiv, wenn ein echter Syncfehler vorliegt
 - **Last successful sync**: Zeitpunkt des letzten erfolgreichen Laufs
 - **Consecutive failures**: Anzahl direkt aufeinanderfolgender Fehler
 
@@ -126,9 +126,12 @@ veroeffentlicht.
 
 Hat `nextcloudcmd` eine Datei nach einem frueheren Fehler voruebergehend
 blockiert, nennt die App die betroffene Datei und die Ursache. Solche Fehler
-werden nicht durch die kurzen App-Wiederholungen erneut versucht. Wenn
-`nextcloudcmd` eine Wartezeit meldet, wird der naechste Joblauf entsprechend
-verschoben. Der lokale Sync-Journal wird dabei nicht veraendert oder geloescht.
+werden als Warnung gemeldet, nicht durch die kurzen App-Wiederholungen erneut
+versucht und erhoehen den Fehlerzaehler nicht. Das konfigurierte Jobintervall
+bleibt aktiv, damit andere Dateien weiter synchronisiert werden. Wenn
+`nextcloudcmd` eine Wartezeit meldet, enthaelt die Warn-Logzeile den daraus
+berechneten voraussichtlichen Zeitpunkt fuer einen erneuten Versuch der Datei.
+Der lokale Sync-Journal wird dabei nicht veraendert oder geloescht.
 
 Fehlende Sensoren deuten meist darauf hin, dass kein MQTT-Dienst eingerichtet
 ist, MQTT Discovery deaktiviert ist oder ein abweichender Discovery-Praefix

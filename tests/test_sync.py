@@ -14,7 +14,7 @@ APP_PATH = Path(__file__).parents[1] / "nextcloud_sync" / "rootfs" / "app"
 sys.path.insert(0, str(APP_PATH))
 
 from config import DaemonConfig, NextcloudConfig, SyncJob
-from sync import SyncError, SyncRunner
+from sync import SyncError, SyncRunner, SyncWarning
 
 
 class SyncRunnerTest(unittest.TestCase):
@@ -132,6 +132,7 @@ class SyncRunnerTest(unittest.TestCase):
             runner.run_job(self._job())
 
         self.assertEqual(raised.exception.exit_code, 4)
+        self.assertIsInstance(raised.exception, SyncWarning)
         self.assertFalse(raised.exception.retryable)
         self.assertEqual(raised.exception.retry_after_seconds, 20 * 60 * 60)
         self.assertIn("Automatic_backup.tar", str(raised.exception))

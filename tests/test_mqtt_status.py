@@ -46,13 +46,24 @@ class MqttStatusPublisherTest(unittest.TestCase):
             self.assertIn("nextcloud_sync/availability", topics)
             self.assertIn("nextcloud_sync/backup/state", topics)
             self.assertEqual(sum(topic.endswith("/config") for topic in topics), 4)
-            problem = next(
+            discovery = [
                 json.loads(payload)
                 for topic, payload, _retain in client.messages
-                if "binary_sensor" in topic
-            )
+                if topic.endswith("/config")
+            ]
+            problem = next(item for item in discovery if item["name"] == "Problem")
+            status = next(item for item in discovery if item["name"] == "Status")
             self.assertEqual(problem["device_class"], "problem")
             self.assertEqual(problem["unique_id"], "nextcloud_sync_backup_problem")
+            self.assertEqual(
+                problem["value_template"],
+                "{{ 'ON' if value_json.state == 'error' else 'OFF' }}",
+            )
+            self.assertEqual(
+                status["value_template"],
+                "{{ 'Problem' if value_json.state == 'error' else "
+                "'warning' if value_json.state == 'warning' else 'OK' }}",
+            )
 
     def test_disabled_mqtt_removes_previous_discovery(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

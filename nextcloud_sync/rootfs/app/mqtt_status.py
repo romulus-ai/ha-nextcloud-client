@@ -115,7 +115,7 @@ class MqttStatusPublisher:
             "name": f"Nextcloud Sync {job.name}",
             "manufacturer": "romulus-ai",
             "model": "Nextcloud Sync Job",
-            "sw_version": os.environ.get("BUILD_VERSION", "0.1.1"),
+            "sw_version": os.environ.get("BUILD_VERSION", "0.1.2"),
         }
         origin = {
             "name": "Nextcloud Sync add-on",
@@ -134,7 +134,10 @@ class MqttStatusPublisher:
                 "name": "Status",
                 "unique_id": f"nextcloud_sync_{job.id}_status",
                 "icon": "mdi:cloud-sync",
-                "value_template": "{{ value_json.state }}",
+                "value_template": (
+                    "{{ 'Problem' if value_json.state == 'error' else "
+                    "'warning' if value_json.state == 'warning' else 'OK' }}"
+                ),
                 "json_attributes_topic": state_topic,
             },
             "problem": {

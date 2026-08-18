@@ -52,6 +52,21 @@ class SyncCancelled(SyncError):
     pass
 
 
+class SyncWarning(SyncError):
+    def __init__(
+        self,
+        message: str,
+        exit_code: int | None = None,
+        retry_after_seconds: int | None = None,
+    ) -> None:
+        super().__init__(
+            message,
+            exit_code=exit_code,
+            retryable=False,
+            retry_after_seconds=retry_after_seconds,
+        )
+
+
 class SyncRunner:
     def __init__(
         self,
@@ -82,7 +97,6 @@ class SyncRunner:
             except SyncError as err:
                 last_error = err
                 if not err.retryable:
-                    LOGGER.warning("[%s] sync will not be retried immediately: %s", job.name, err)
                     break
                 LOGGER.warning("[%s] attempt %s/%s failed: %s", job.name, attempt, attempts, err)
                 if attempt < attempts and self._stop_event.wait(
@@ -222,10 +236,9 @@ def _extract_blacklisted_error(output: str, exit_code: int | None) -> SyncError 
             retry_after_seconds = amount * RETRY_AFTER_MULTIPLIERS[unit]
 
         path = match.group("path")
-        return SyncError(
+        return SyncWarning(
             f'nextcloudcmd temporarily blocked "{path}" after an earlier error: {reason}',
             exit_code=exit_code,
-            retryable=False,
             retry_after_seconds=retry_after_seconds,
         )
     return None

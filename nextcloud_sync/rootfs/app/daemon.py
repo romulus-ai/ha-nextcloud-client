@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone
 from config import SyncJob, load_config
 from mqtt_status import MqttStatusPublisher
 from status import StatusStore
-from sync import SyncCancelled, SyncError, SyncRunner
+from sync import SyncCancelled, SyncError, SyncRunner, SyncWarning
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,24 +63,22 @@ class NextcloudDaemon:
 
     def _run_job_forever(self, job: SyncJob) -> None:
         while not self._stop_event.is_set():
-            delay = job.interval
             try:
                 with self._job_slots:
                     if self._stop_event.is_set():
                         break
-                    delay = self._run_job(job)
+                    self._run_job(job)
             except Exception as err:  # A dead worker must restart the container.
                 LOGGER.exception("[%s] unexpected worker failure", job.name)
                 self._worker_error = err
                 self._stop_event.set()
                 break
-            if self._stop_event.wait(delay):
+            if self._stop_event.wait(job.interval):
                 break
 
-    def _run_job(self, job: SyncJob) -> int:
+    def _run_job(self, job: SyncJob) -> None:
         started_monotonic = time.monotonic()
         started_at = _utc_now()
-        next_delay = job.interval
         state = self._statuses.update(
             job.id,
             state="running",
@@ -103,12 +101,28 @@ class NextcloudDaemon:
                 last_error="sync cancelled during shutdown",
             )
             self._mqtt.publish_state(job.id, state)
-            return next_delay
+            return
+        except SyncWarning as warning:
+            duration = round(time.monotonic() - started_monotonic, 3)
+            state = self._statuses.update(
+                job.id,
+                state="warning",
+                duration_seconds=duration,
+                exit_code=warning.exit_code,
+                last_error=str(warning),
+            )
+            retry_time = ""
+            if warning.retry_after_seconds is not None:
+                estimated_retry = datetime.now(timezone.utc) + timedelta(
+                    seconds=warning.retry_after_seconds
+                )
+                retry_time = (
+                    f"; estimated file retry at {estimated_retry.isoformat(timespec='seconds')}"
+                )
+            LOGGER.warning("[%s] sync warning: %s%s", job.name, warning, retry_time)
         except SyncError as err:
             duration = round(time.monotonic() - started_monotonic, 3)
             previous = self._statuses.get(job.id)
-            if err.retry_after_seconds is not None:
-                next_delay = max(next_delay, err.retry_after_seconds)
             state = self._statuses.update(
                 job.id,
                 state="error",
@@ -132,10 +146,9 @@ class NextcloudDaemon:
 
         state = self._statuses.update(
             job.id,
-            next_run=(datetime.now(timezone.utc) + timedelta(seconds=next_delay)).isoformat(),
+            next_run=(datetime.now(timezone.utc) + timedelta(seconds=job.interval)).isoformat(),
         )
         self._mqtt.publish_state(job.id, state)
-        return next_delay
 
     def _install_signal_handlers(self) -> None:
         def stop(_signum: int, _frame: object) -> None:

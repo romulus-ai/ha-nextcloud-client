@@ -44,7 +44,7 @@ direkt ueber den Home-Assistant-App-Store eingebunden.
 ## Releases
 
 Eine Veroeffentlichung wird durch einen Git-Tag angestossen, der exakt zur
-Version in `nextcloud_sync/config.yaml` passt, beispielsweise `v0.1.1`. Der
+Version in `nextcloud_sync/config.yaml` passt, beispielsweise `v0.1.2`. Der
 Workflow baut beide Architekturen, veroeffentlicht das Multi-Arch-Image und
 erstellt das GitHub Release. Das GHCR-Paket muss in GitHub einmalig auf
 **Public** gestellt werden; der Workflow prueft vor dem Release einen anonymen
