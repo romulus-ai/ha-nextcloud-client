@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3
+
+- Add one MQTT button per job to acknowledge the current warning or error
+- Keep acknowledged issues at `OK` while identical occurrences continue
+- Persist acknowledgements across restarts and reset them after a successful sync
+
 ## 0.1.2
 
 - Keep the configured job interval when an individual file is temporarily blocked

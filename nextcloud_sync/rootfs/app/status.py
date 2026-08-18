@@ -39,6 +39,11 @@ class StatusStore:
                     "consecutive_failures": state.get("consecutive_failures", 0),
                     "next_run": None,
                     "last_error": state.get("last_error"),
+                    "active_issue_id": state.get("active_issue_id"),
+                    "active_issue_message": state.get("active_issue_message"),
+                    "acknowledged_issue_id": state.get("acknowledged_issue_id"),
+                    "acknowledged_at": state.get("acknowledged_at"),
+                    "last_acknowledged_issue": state.get("last_acknowledged_issue"),
                 }
             )
             self._states[job.id] = state

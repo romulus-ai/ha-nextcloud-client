@@ -99,9 +99,24 @@ Wenn MQTT verfuegbar ist, wird jeder Job als eigenes Geraet angelegt:
 - **Problem**: aktiv, wenn ein echter Syncfehler vorliegt
 - **Last successful sync**: Zeitpunkt des letzten erfolgreichen Laufs
 - **Consecutive failures**: Anzahl direkt aufeinanderfolgender Fehler
+- **Acknowledge issue**: quittiert die aktuelle Warnung oder den aktuellen Fehler
 
 Der Statussensor enthaelt zusaetzlich unter anderem Laufzeit, Exitcode,
 naechsten Lauf und eine gekuerzte Fehlermeldung als Attribute.
+
+Nach einer Quittierung wechselt der Status auf `OK` und der Problem-Sensor wird
+deaktiviert. Identische Folgeereignisse bleiben quittiert und erhoehen den
+Fehlerzaehler nicht. Eine abweichende Warnung oder ein abweichender Fehler wird
+erneut angezeigt. Ein erfolgreicher Sync setzt die aktive Quittierung zurueck,
+sodass ein spaeter erneut auftretendes Problem wieder gemeldet wird. Die
+Quittierung bleibt bei einem Neustart der App erhalten.
+
+Der Button sendet `PRESS` an das folgende MQTT-Topic, das auch direkt verwendet
+werden kann:
+
+```text
+nextcloud_sync/<job-id>/acknowledge
+```
 
 ## Synchronisationsverhalten
 

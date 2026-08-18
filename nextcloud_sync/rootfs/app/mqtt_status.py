@@ -5,6 +5,7 @@ import logging
 import os
 import ssl
 import threading
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 from urllib.request import Request, urlopen
@@ -13,7 +14,13 @@ from config import SyncJob
 
 LOGGER = logging.getLogger("nextcloud-mqtt")
 BASE_TOPIC = "nextcloud_sync"
-COMPONENTS = ("status", "problem", "last_success", "consecutive_failures")
+COMPONENTS = (
+    "status",
+    "problem",
+    "last_success",
+    "consecutive_failures",
+    "acknowledge",
+)
 
 
 class MqttStatusPublisher:
@@ -22,6 +29,7 @@ class MqttStatusPublisher:
         enabled: bool,
         discovery_prefix: str,
         known_jobs_path: Path = Path("/data/mqtt_jobs.json"),
+        acknowledge_issue: Callable[[str], None] | None = None,
     ) -> None:
         self._enabled = enabled
         self._discovery_prefix = discovery_prefix
@@ -30,6 +38,7 @@ class MqttStatusPublisher:
         self._jobs: dict[str, SyncJob] = {}
         self._states: dict[str, dict[str, Any]] = {}
         self._connected = threading.Event()
+        self._acknowledge_issue = acknowledge_issue
 
     def start(self, jobs: list[SyncJob], states: dict[str, dict[str, Any]]) -> None:
         self._jobs = {job.id: job for job in jobs}
@@ -53,6 +62,7 @@ class MqttStatusPublisher:
             client.will_set(f"{BASE_TOPIC}/availability", "offline", retain=True)
             client.on_connect = self._on_connect
             client.on_disconnect = self._on_disconnect
+            client.on_message = self._on_message
 
             if service.get("ssl"):
                 client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
@@ -95,6 +105,8 @@ class MqttStatusPublisher:
             return
 
         client.publish(f"{BASE_TOPIC}/availability", "online", retain=True)
+        for job_id in self._jobs:
+            client.subscribe(f"{BASE_TOPIC}/{job_id}/acknowledge")
         self._remove_stale_discovery()
         for job in self._jobs.values():
             self._publish_discovery(job)
@@ -107,6 +119,20 @@ class MqttStatusPublisher:
     def _on_disconnect(self, _client: Any, _userdata: Any, *_args: Any) -> None:
         self._connected.clear()
 
+    def _on_message(self, _client: Any, _userdata: Any, message: Any) -> None:
+        parts = str(message.topic).split("/")
+        if (
+            len(parts) != 3
+            or parts[0] != BASE_TOPIC
+            or parts[2] != "acknowledge"
+            or parts[1] not in self._jobs
+            or message.payload != b"PRESS"
+            or getattr(message, "retain", False)
+            or self._acknowledge_issue is None
+        ):
+            return
+        self._acknowledge_issue(parts[1])
+
     def _publish_discovery(self, job: SyncJob) -> None:
         state_topic = f"{BASE_TOPIC}/{job.id}/state"
         availability_topic = f"{BASE_TOPIC}/availability"
@@ -115,7 +141,7 @@ class MqttStatusPublisher:
             "name": f"Nextcloud Sync {job.name}",
             "manufacturer": "romulus-ai",
             "model": "Nextcloud Sync Job",
-            "sw_version": os.environ.get("BUILD_VERSION", "0.1.2"),
+            "sw_version": os.environ.get("BUILD_VERSION", "0.1.3"),
         }
         origin = {
             "name": "Nextcloud Sync add-on",
@@ -163,10 +189,21 @@ class MqttStatusPublisher:
                 "icon": "mdi:alert-circle-outline",
                 "value_template": "{{ value_json.consecutive_failures }}",
             },
+            "acknowledge": {
+                "availability_topic": availability_topic,
+                "device": device,
+                "origin": origin,
+                "name": "Acknowledge issue",
+                "unique_id": f"nextcloud_sync_{job.id}_acknowledge",
+                "command_topic": f"{BASE_TOPIC}/{job.id}/acknowledge",
+                "payload_press": "PRESS",
+                "entity_category": "diagnostic",
+                "icon": "mdi:check-circle-outline",
+            },
         }
 
         for component, payload in payloads.items():
-            domain = "binary_sensor" if component == "problem" else "sensor"
+            domain = _component_domain(component)
             topic = f"{self._discovery_prefix}/{domain}/nextcloud_sync_{job.id}_{component}/config"
             self._publish_json(topic, payload, retain=True)
 
@@ -190,7 +227,7 @@ class MqttStatusPublisher:
         )
         for job_id in stale_jobs:
             for component in COMPONENTS:
-                domain = "binary_sensor" if component == "problem" else "sensor"
+                domain = _component_domain(component)
                 topic = f"{previous_prefix}/{domain}/nextcloud_sync_{job_id}_{component}/config"
                 self._client.publish(topic, "", retain=True)
 
@@ -209,6 +246,14 @@ class MqttStatusPublisher:
             json.dumps(payload, ensure_ascii=True, separators=(",", ":")),
             retain=retain,
         )
+
+
+def _component_domain(component: str) -> str:
+    if component == "problem":
+        return "binary_sensor"
+    if component == "acknowledge":
+        return "button"
+    return "sensor"
 
 
 def _load_mqtt_service() -> dict[str, Any]:
